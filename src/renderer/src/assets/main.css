@@ -1,0 +1,81 @@
+:root {
+  --text-color: #11aa96;
+  --bg-color: #111;
+  --bg-hover: #333;
+  --br-color: #811723;
+}
+
+* {
+  font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+  color: var(--text-color);
+}
+
+body {
+  background: var(--bg-color);
+}
+
+.add-sound {
+  border: 2px dashed var(--text-color);
+  cursor: pointer;
+  border-radius: 16px;
+  width: 200px;
+  height: 94px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.add-sound h2 {
+  font-size: 3rem;
+}
+
+.sounds-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sound {
+  width: 200px;
+  height: 94px;
+  border: 2px solid var(--br-color);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.sound__caption {
+  padding: 8px 0 0 8px;
+  font-size: 2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sound__buttons {
+  display: flex;
+}
+
+.sound__buttons button {
+  flex: 1;
+  font-size: 1.5rem;
+  background: inherit;
+  border-top: 2px solid var(--br-color);
+}
+
+.sound__button-edit {
+  border-right: 2px solid var(--br-color);
+}
+
+.add-sound:hover {
+  background-color: var(--bg-hover);
+}
+
+.sound__buttons button:hover {
+  background-color: var(--bg-hover);
+}

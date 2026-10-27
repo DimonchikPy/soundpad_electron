@@ -1,7 +1,10 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import Store from 'electron-store'
 import icon from '../../resources/icon.png?asset'
+
+let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
   // Create the browser window.
@@ -15,7 +18,7 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: true
     }
   })
 
@@ -37,6 +40,102 @@ function createWindow(): void {
   }
 }
 
+interface Sound {
+  id: number;
+  name: string;
+  hotkey: string;
+  path: string;
+}
+
+interface Schema {
+  sounds: Sound[]
+}
+
+const store = new Store<Schema>({
+  schema: {
+    sounds: {
+    type: 'array',
+    default: [],
+    items: {
+      type: 'object',
+      properties: {
+        id:   { type: 'number' },
+        name: { type: 'string', minLength: 1 },
+        hotkey: { type: 'string'},
+        path: { type: 'string', minLength: 1 }
+      },
+      required: ['id', 'name'],
+      additionalProperties: false   // запрет «лишних» полей
+    }
+  }},
+  encryptionKey: "aaesge13"
+});
+
+ipcMain.handle("store:sound:add", (_event, id, name, hotkey, path) => {
+  const sounds = store.get("sounds", []);
+  store.set("sounds", [...sounds, {id, name, hotkey, path}])
+  return true
+})
+
+ipcMain.handle("store:sound:del", (_event, id) => {
+  const sounds = store.get('sounds', []);
+  store.set('sounds', sounds.filter((v) => v.id !== id))
+  return true
+})
+
+ipcMain.handle("store:sound:getall", (_event) => {return store.get("sounds", [])})
+
+if (is.dev) {
+  ipcMain.handle('dev:store:clear', () => {
+    store.clear()
+    return true
+  })
+}
+
+ipcMain.handle("window:new-sound", () => {
+  if (!mainWindow) return
+
+  const modalWindow = new BrowserWindow({
+    width: 400,
+    height: 350,
+    parent: mainWindow,
+    resizable: false,
+    modal: true,
+    show: false,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.ts'),
+      sandbox: true
+    }
+  })
+  modalWindow.on("ready-to-show", () => modalWindow.show())
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    modalWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#/add-sound`)
+  } else {
+    modalWindow.loadFile(join(__dirname, '../renderer/index.html'), {hash: 'add-sound'})
+  }
+  return true
+})
+
+ipcMain.handle('dialog:open-file', async () => {
+  if (!mainWindow) return null
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [{ name: 'Audio', extensions: ['mp3', 'wav'] }] // Настройте под свои нужды
+  })
+  
+  if (canceled || filePaths.length === 0) return null
+  return filePaths[0] // Возвращаем абсолютный путь
+})
+
+// 3. Обработчик закрытия окна по кнопке (если нужно)
+ipcMain.on('window:close', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  win?.close()
+  return true
+})
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -50,9 +149,6 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
-
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
 
   createWindow()
 
